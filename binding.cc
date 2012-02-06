@@ -26,6 +26,7 @@
 #include <node.h>
 #include <node_version.h>
 #include <node_buffer.h>
+#include <poll.h>
 #include <zmq.h>
 #include <assert.h>
 #include <stdio.h>
@@ -67,6 +68,7 @@ namespace zmq {
     public:
       static void Initialize(v8::Handle<v8::Object> target);
       virtual ~Socket();
+      void CallbackIfReady();
 
     private:
       static Handle<Value> New(const Arguments &args);
@@ -104,7 +106,13 @@ namespace zmq {
       Persistent<Object> context_;
       void *socket_;
       uint8_t state_;
+
+      bool IsReady();
+      uv_check_t *check_handle_;
+      static void UV_CheckFDState(uv_check_t* handle, int status);
   };
+
+  Persistent<String> callback_symbol;
 
   static void
   Initialize(Handle<Object> target);
@@ -215,6 +223,8 @@ namespace zmq {
     NODE_SET_PROTOTYPE_METHOD(t, "close", Close);
 
     target->Set(String::NewSymbol("Socket"), t->GetFunction());
+
+    callback_symbol = NODE_PSYMBOL("onReady");
   }
 
   Socket::~Socket() {
@@ -241,10 +251,59 @@ namespace zmq {
     return args.This();
   }
 
+  bool
+  Socket::IsReady() {
+    size_t len = sizeof(int);
+    struct pollfd pfd = { 0 };
+    pfd.events = POLLIN;
+
+    if (socket_ && zmq_getsockopt(socket_, ZMQ_FD, &pfd.fd, &len) >= 0) {
+      return poll(&pfd, 1, 0);
+    } else {
+      return 0;
+    }
+  }
+
+  void
+  Socket::CallbackIfReady() {
+    // if (this->IsReady() && callback_->IsFunction()) {
+    if (this->IsReady()) {
+      HandleScope scope;
+
+      Local<Value> callback_v = this->handle_->Get(callback_symbol);
+      if (!callback_v->IsFunction()) {
+        return;
+      }
+
+      TryCatch try_catch;
+
+      callback_v.As<Function>()->Call(this->handle_, 0, NULL);
+
+      if (try_catch.HasCaught()) {
+        FatalException(try_catch);
+      }
+    }
+  }
+
+  void
+  Socket::UV_CheckFDState(uv_check_t* handle, int status) {
+    assert(status == 0);
+
+    Socket* s = static_cast<Socket*>(handle->data);
+    s->CallbackIfReady();
+  }
+
   Socket::Socket(Context *context, int type) : ObjectWrap() {
     context_ = Persistent<Object>::New(context->handle_);
     socket_ = zmq_socket(context->context_, type);
     state_ = STATE_READY;
+
+    check_handle_ = new uv_check_t;
+
+    check_handle_->data = this;
+    uv_check_init(uv_default_loop(), check_handle_);
+    uv_check_start(check_handle_, Socket::UV_CheckFDState);
+    uv_unref(uv_default_loop());
   }
 
   Socket *
@@ -722,6 +781,9 @@ namespace zmq {
       state_ = STATE_CLOSED;
       context_.Dispose();
       context_.Clear();
+
+      uv_check_stop(check_handle_);
+      delete check_handle_;
     }
   }
 
