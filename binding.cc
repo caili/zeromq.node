@@ -155,6 +155,9 @@ namespace zmq {
   Handle<Value>
   Context::New(const Arguments& args) {
     HandleScope scope;
+
+    assert(args.IsConstructCall());
+
     int io_threads = 1;
     if (args.Length() == 1) {
       if (!args[0]->IsNumber()) {
@@ -234,6 +237,9 @@ namespace zmq {
   Handle<Value>
   Socket::New(const Arguments &args) {
     HandleScope scope;
+
+    assert(args.IsConstructCall());
+
     if (args.Length() != 2) {
       return ThrowException(Exception::Error(
           String::New("Must pass a context and a type to constructor")));
