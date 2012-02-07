@@ -53,6 +53,27 @@ sock.on('message', function(msg){
 
      $ make test
 
+## Building on OS X
+
+1. Install Node
+2. Install ØMQ: `brew install zeromq`
+3. Install dev deps: `npm install`
+4. Build: `make`
+
+## Building on Windows
+
+0. Install [Visual C++ 2008
+   Express](http://www.microsoft.com/visualstudio/en-us/products/2008-editions/express)
+   and [Visual C++ 2010
+   Express](http://www.microsoft.com/visualstudio/en-us/products/2010-editions/visual-cpp-express)
+   (yes, both; ØMQ requires 2008)
+1. Run "Visual Studio Command Prompt (2010)"
+2. Compile Node in `C:\src\node`: `vcbuild.bat`
+3. Compile ØMQ in `C:\src\zeromq2-1`: `cd builds\msvc && msbuild`
+4. Compile zeromq.node in `C:\src\zeromq.node`: `msbuild`
+5. Copy `libzmq.dll`: `copy C:\src\zeromq2-1\libzmq.dll C:\src\zeromq.node`
+6. Copy `zeromq.node`: `copy C:\src\zeromq.node\Debug\binding.node C:\src\zeromq.node`
+
 ## Contributors
 
  Authored by Justin Tulloss, maintained by Shripad K and TJ Holowaychuk. To contribute please ensure _all_ tests pass, and do your best to maintain the style used within the rest of the library.
