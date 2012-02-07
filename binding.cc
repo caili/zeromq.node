@@ -291,7 +291,6 @@ namespace zmq {
 
   void
   Socket::CallbackIfReady() {
-    // if (this->IsReady() && callback_->IsFunction()) {
     if (this->IsReady()) {
       HandleScope scope;
 
