@@ -22,11 +22,15 @@
  * THE SOFTWARE.
  */
 
+#ifdef _WIN32
+// WSAPoll is Vista+
+#define _WIN32_WINNT 0x0600
+#endif
+
 #include <v8.h>
 #include <node.h>
 #include <node_version.h>
 #include <node_buffer.h>
-#include <poll.h>
 #include <zmq.h>
 #include <assert.h>
 #include <stdio.h>
@@ -34,6 +38,21 @@
 #include <string.h>
 #include <errno.h>
 #include <stdexcept>
+
+#ifdef _WIN32
+#include <winsock2.h>
+
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment (lib, "Mswsock.lib")
+#pragma comment (lib, "AdvApi32.lib")
+
+#define sockpoll WSAPoll
+#define snprintf _snprintf_s
+#else
+#include <poll.h>
+
+#define sockpoll poll
+#endif
 
 using namespace v8;
 using namespace node;
@@ -264,7 +283,7 @@ namespace zmq {
     pfd.events = POLLIN;
 
     if (socket_ && zmq_getsockopt(socket_, ZMQ_FD, &pfd.fd, &len) >= 0) {
-      return poll(&pfd, 1, 0);
+      return sockpoll(&pfd, 1, 0);
     } else {
       return 0;
     }
@@ -884,3 +903,5 @@ extern "C" void
 init(Handle<Object> target) {
   zmq::Initialize(target);
 }
+
+NODE_MODULE(binding, init)
