@@ -328,7 +328,6 @@ namespace zmq {
     check_handle_->data = this;
     uv_check_init(uv_default_loop(), check_handle_);
     uv_check_start(check_handle_, Socket::UV_CheckFDState);
-    uv_unref(uv_default_loop());
   }
 
   Socket *
@@ -809,6 +808,7 @@ namespace zmq {
 
       uv_check_stop(check_handle_);
       delete check_handle_;
+      uv_unref(uv_default_loop());
     }
   }
 
