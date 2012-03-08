@@ -110,6 +110,8 @@ namespace zmq {
       void *socket_;
       uint8_t state_;
 
+	  static Handle<Value> CheckIO(const Arguments &args);
+
       bool IsReady();
       uv_check_t *check_handle_;
       static void UV_CheckFDState(uv_check_t* handle, int status);
@@ -227,6 +229,7 @@ namespace zmq {
     NODE_SET_PROTOTYPE_METHOD(t, "recv", Recv);
     NODE_SET_PROTOTYPE_METHOD(t, "send", Send);
     NODE_SET_PROTOTYPE_METHOD(t, "close", Close);
+	NODE_SET_PROTOTYPE_METHOD(t, "check_io", CheckIO);
 
     target->Set(String::NewSymbol("Socket"), t->GetFunction());
 
@@ -654,7 +657,7 @@ namespace zmq {
 
     IncomingMessage msg;
     if (zmq_recv(socket->socket_, msg, flags) < 0)
-      return ThrowException(ExceptionFromError());        
+      return ThrowException(ExceptionFromError());
     return scope.Close(msg.GetBuffer());
   }
 
@@ -796,6 +799,14 @@ namespace zmq {
     GET_SOCKET(args);
     socket->Close();
     return Undefined();
+  }
+
+  Handle<Value>
+  Socket::CheckIO(const Arguments& args) {
+    HandleScope scope;
+    GET_SOCKET(args);
+    socket->CallbackIfReady();
+    return Boolean::New(true);
   }
 
   // Make zeromq versions less than 2.1.3 work by defining
