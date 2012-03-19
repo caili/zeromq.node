@@ -71,7 +71,7 @@ namespace zmq {
     public:
       static void Initialize(v8::Handle<v8::Object> target);
       virtual ~Socket();
-      void CallbackIfReady();
+      bool CallbackIfReady();
 
     private:
       static Handle<Value> New(const Arguments &args);
@@ -268,14 +268,14 @@ namespace zmq {
     return zmq_poll(items, 1, 0);
   }
 
-  void
+  bool
   Socket::CallbackIfReady() {
     if (this->IsReady()) {
       HandleScope scope;
 
       Local<Value> callback_v = this->handle_->Get(callback_symbol);
       if (!callback_v->IsFunction()) {
-        return;
+        return false;
       }
 
       TryCatch try_catch;
@@ -285,7 +285,10 @@ namespace zmq {
       if (try_catch.HasCaught()) {
         FatalException(try_catch);
       }
+
+	  return true;
     }
+	return false;
   }
 
   void
@@ -293,7 +296,7 @@ namespace zmq {
     assert(status == 0);
 
     Socket* s = static_cast<Socket*>(handle->data);
-    s->CallbackIfReady();
+    while(s->CallbackIfReady());
   }
 
   Socket::Socket(Context *context, int type) : ObjectWrap() {
